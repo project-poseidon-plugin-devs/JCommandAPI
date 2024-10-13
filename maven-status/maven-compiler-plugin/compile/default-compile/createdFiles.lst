@@ -1,0 +1,5 @@
+org\poseidondevs\jcommandapi\CommandHandler.class
+org\poseidondevs\jcommandapi\Command.class
+org\poseidondevs\jcommandapi\CommandInfo.class
+org\poseidondevs\jcommandapi\JCommandAPI.class
+org\poseidondevs\jcommandapi\CommandManager.class
