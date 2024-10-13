@@ -41,13 +41,14 @@ public class CommandManager {
     }
 
     public void registerCommands(Object... objects) {
-        for(Object obj : objects) {
+        for (Object obj : objects) {
             Method[] methods = obj.getClass().getDeclaredMethods();
             for (Method method : methods) {
                 if (method.isAnnotationPresent(CommandHandler.class) && method.getParameterTypes()[0] == CommandInfo.class) {
                     CommandHandler cmdHandler = method.getAnnotation(CommandHandler.class);
-                    if (Modifier.isStatic(method.getModifiers())) {
-                        obj = null;
+                    if (!Modifier.isPublic(method.getModifiers())) {
+                        logger.log(Level.WARNING, "Could not register command /" + cmdHandler.command() + ": method is not public");
+                        continue;
                     }
                     if (cmdHandler.command().contains(".")) {
                         queueCommand(obj, method, cmdHandler);
