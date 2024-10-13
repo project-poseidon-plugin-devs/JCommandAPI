@@ -2,15 +2,17 @@ package org.poseidondevs.jcommandapi;
 
 import java.util.Arrays;
 import java.util.List;
+
+import org.bukkit.command.CommandException;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 public class CommandInfo {
-    private final RegisteredCommand regCommand;
+    private final Command command;
     private final CommandSender sender;
     private final String label;
     private final List<String> args;
-    private final String command;
+    private final String commandName;
     private final List<String> aliases;
     private final String description;
     private final String usage;
@@ -19,12 +21,12 @@ public class CommandInfo {
     private final int minArgs;
     private final int maxArgs;
 
-    public CommandInfo(RegisteredCommand regCommand, CommandSender sender, String label, List<String> args, CommandHandler cmdHandler) {
-        this.regCommand = regCommand;
+    public CommandInfo(Command command, CommandSender sender, String label, List<String> args, CommandHandler cmdHandler) {
+        this.command = command;
         this.sender = sender;
         this.label = label;
         this.args = args;
-        this.command = cmdHandler.command();
+        this.commandName = cmdHandler.command();
         this.aliases = Arrays.asList(cmdHandler.aliases());
         this.description = cmdHandler.description();
         this.usage = cmdHandler.usage();
@@ -34,8 +36,8 @@ public class CommandInfo {
         this.maxArgs = cmdHandler.maxArgs();
     }
 
-    public RegisteredCommand getRegisteredCommand() {
-        return regCommand;
+    public Command getCommand() {
+        return command;
     }
 
     public CommandSender getSender() {
@@ -50,8 +52,8 @@ public class CommandInfo {
         return args;
     }
 
-    public String getCommand() {
-        return command;
+    public String getCommandName() {
+        return commandName;
     }
 
     public List<String> getAliases() {
@@ -106,8 +108,26 @@ public class CommandInfo {
         return index >= 0 && index < args.size();
     }
 
+    public String getIndex(int index) {
+        if (!isValidIndex(index)) {
+            throw new CommandException("Invalid index: " + index);
+        }
+        return args.get(index);
+    }
+
     public String getIndex(int index, String defaultVal) {
         return isValidIndex(index) ? args.get(index) : defaultVal;
+    }
+
+    public int getInt(int index) {
+        if (!isValidIndex(index)) {
+            throw new CommandException("Invalid index: " + index);
+        }
+        try {
+            return Integer.parseInt(args.get(index));
+        } catch (NumberFormatException e) {
+            throw new CommandException("Not a number: " + args.get(index));
+        }
     }
 
     public int getInt(int index, int defaultVal) {
@@ -117,6 +137,17 @@ public class CommandInfo {
             } catch (NumberFormatException ignored) {}
         }
         return defaultVal;
+    }
+
+    public double getDouble(int index) {
+        if (!isValidIndex(index)) {
+            throw new CommandException("Invalid index: " + index);
+        }
+        try {
+            return Double.parseDouble(args.get(index));
+        } catch (NumberFormatException e) {
+            throw new CommandException("Not a number: " + args.get(index));
+        }
     }
 
     public double getDouble(int index, double defaultVal) {

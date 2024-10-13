@@ -14,13 +14,13 @@ import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.plugin.Plugin;
 
 public class CommandManager {
-    private Plugin plugin;
+    private final Plugin plugin;
     private Logger logger;
     private String prefix;
     private CommandMap commandMap;
 
-    private Map<String, RegisteredCommand> registeredCommands = new HashMap<>();
-    private Map<Integer, List<RegisteredCommand>> queuedCommands = new HashMap<>();
+    private Map<String, Command> baseCommands = new HashMap<>();
+    private Map<Integer, List<Command>> queuedCommands = new HashMap<>();
 
     public CommandManager(Plugin plugin) {
         this.plugin = plugin;
@@ -34,7 +34,7 @@ public class CommandManager {
             field.setAccessible(false);
             logger.log(Level.INFO, prefix + "Initialized CommandMap");
         } catch (Exception e) {
-            logger.log(Level.SEVERE, prefix + "Error while initializing CommandMap:");
+            logger.log(Level.SEVERE, prefix + "Error while initializing CommandMap");
             e.printStackTrace();
         }
 
@@ -50,7 +50,7 @@ public class CommandManager {
                         obj = null;
                     }
                     if (cmdHandler.command().contains(".")) {
-                        queueChildCommand(obj, method, cmdHandler);
+                        queueCommand(obj, method, cmdHandler);
                     } else {
                         registerBaseCommand(obj, method, cmdHandler);
                     }
@@ -66,14 +66,14 @@ public class CommandManager {
             Class<PluginCommand> clazz = PluginCommand.class;
             Constructor<PluginCommand> constructor = clazz.getDeclaredConstructor(String.class, Plugin.class);
             constructor.setAccessible(true);
-            RegisteredCommand regCommand = new RegisteredCommand(obj, method);
-            PluginCommand command = constructor.newInstance(cmdHandler.command(), plugin);
-            command.setAliases(Arrays.asList(cmdHandler.aliases()));
-            command.setDescription(cmdHandler.description());
-            command.setUsage(cmdHandler.usage());
-            command.setExecutor(regCommand);
-            commandMap.register(plugin.getDescription().getName(), command);
-            registeredCommands.put(cmdHandler.command(), regCommand);
+            Command command = new Command(obj, method);
+            PluginCommand pluginCmd = constructor.newInstance(cmdHandler.command(), plugin);
+            pluginCmd.setAliases(Arrays.asList(cmdHandler.aliases()));
+            pluginCmd.setDescription(cmdHandler.description());
+            pluginCmd.setUsage(cmdHandler.usage());
+            pluginCmd.setExecutor(command);
+            commandMap.register(plugin.getDescription().getName(), pluginCmd);
+            baseCommands.put(cmdHandler.command(), command);
             logger.log(Level.INFO, prefix + "Registered command /" + cmdHandler.command());
         } catch (Exception e) {
             logger.log(Level.SEVERE, prefix + "Error while registering command /" + cmdHandler.command());
@@ -81,14 +81,10 @@ public class CommandManager {
         }
     }
 
-    /*private void registerChild(Object obj, Method method, CommandHandler cmdHandler) {
-
-    }*/
-
-    private void queueChildCommand(Object obj, Method method, CommandHandler cmdHandler) {
+    private void queueCommand(Object obj, Method method, CommandHandler cmdHandler) {
         int level = cmdHandler.command().split("\\.").length - 1;
-        RegisteredCommand command = new RegisteredCommand(obj, method);
-        List<RegisteredCommand> queue = queuedCommands.getOrDefault(level, new ArrayList<>());
+        Command command = new Command(obj, method);
+        List<Command> queue = queuedCommands.getOrDefault(level, new ArrayList<>());
         if (!queue.contains(command)) {
             queue.add(command);
         }
@@ -102,26 +98,26 @@ public class CommandManager {
             if (i > highestLevel) highestLevel = i;
         }
         for (int i = 1; i <= highestLevel ; i++) {
-            List<RegisteredCommand> queue = queuedCommands.get(i);
+            List<Command> queue = queuedCommands.get(i);
             if (queue == null || queue.isEmpty()) return;
-            for (RegisteredCommand command : queue) {
-                List<String> list = Arrays.asList(command.getCommandHandler().command().split("\\."));
-                RegisteredCommand parentCmd = getParentCommand(list, registeredCommands.get(list.get(0)), 1);
+            for (Command command : queue) {
+                String[] list = command.getCommandHandler().command().split("\\.");
+                Command parentCmd = getParentCommand(list, baseCommands.get(list[0]), 1);
                 if (parentCmd == null) {
                     logger.log(Level.WARNING, prefix + "Could not register command /" + String.join(" ", list) + " due to nonexistent parent commands");
                     continue;
                 }
-                parentCmd.addChild(list.get(list.size() - 1), command);
+                parentCmd.addChild(list[list.length - 1], command);
                 logger.log(Level.INFO, prefix + "Registered subcommand /" + String.join(" ", list));
             }
         }
     }
 
-    private RegisteredCommand getParentCommand(List<String> list, RegisteredCommand command, int start) {
+    private Command getParentCommand(String[] list, Command command, int start) {
         if (command == null) return null;
-        if (start > list.size() - 2) {
+        if (start > list.length - 2) {
             return command;
         }
-        return command.hasChild(list.get(start)) ? getParentCommand(list, command.getChild(list.get(start)), ++start) : null;
+        return command.hasChild(list[start]) ? getParentCommand(list, command.getChild(list[start]), ++start) : null;
     }
 }

@@ -3,23 +3,22 @@ package org.poseidondevs.jcommandapi;
 import java.lang.reflect.Method;
 import java.util.*;
 
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 
-public class RegisteredCommand implements CommandExecutor {
-    private final Object command;
+public class Command implements CommandExecutor {
+    private final Object object;
     private final Method method;
     private final CommandHandler cmdHandler;
-    private final Map<String, RegisteredCommand> childCommands = new HashMap<>();
+    private final Map<String, Command> childCommands = new HashMap<>();
 
-    public RegisteredCommand(Object command, Method method) {
-        this.command = command;
+    public Command(Object object, Method method) {
+        this.object = object;
         this.method = method;
         this.cmdHandler = method.getAnnotation(CommandHandler.class);
     }
 
-    public boolean onCommand(CommandSender sender, Command command, String s, String[] strings) {
+    public boolean onCommand(CommandSender sender, org.bukkit.command.Command command, String s, String[] strings) {
         List<String> args = Arrays.asList(strings);
         handleCommand(new CommandInfo(this, sender, s, args, cmdHandler));
         return true;
@@ -28,7 +27,7 @@ public class RegisteredCommand implements CommandExecutor {
     public void handleCommand(CommandInfo info) {
         List<String> args = info.getArgs();
         if (!args.isEmpty()) {
-            RegisteredCommand child = getChild(args.get(0));
+            Command child = getChild(args.get(0));
             if (child == null) {
                 execute(info);
                 return;
@@ -61,7 +60,7 @@ public class RegisteredCommand implements CommandExecutor {
         }
 
         try {
-            method.invoke(command, info);
+            method.invoke(object, info);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -71,11 +70,11 @@ public class RegisteredCommand implements CommandExecutor {
         return cmdHandler;
     }
 
-    public void addChild(String name, RegisteredCommand child) {
+    public void addChild(String name, Command child) {
         childCommands.put(name.toLowerCase(), child);
     }
 
-    public RegisteredCommand getChild(String name) {
+    public Command getChild(String name) {
         return childCommands.get(name.toLowerCase());
     }
 
@@ -83,7 +82,7 @@ public class RegisteredCommand implements CommandExecutor {
         return childCommands.containsKey(name.toLowerCase());
     }
 
-    public Map<String, RegisteredCommand> getChildren() {
+    public Map<String, Command> getChildren() {
         return childCommands;
     }
 }
